@@ -5,27 +5,45 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    networks:
+      - backend
+
   ipfs:
     image: ipfs/kubo:latest
     volumes:
       - ipfs_data:/data/ipfs
     restart: unless-stopped
+    networks:
+      - backend
 
-  gateway:
+  megarouter:
     build: .
     ports:
       - "3000:3000"
     env_file:
       - .env
     depends_on:
+      - postgres
       - ipfs
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.megarouter.rule=Host(`localhost`)"
+      - "traefik.http.routers.megarouter.entrypoints=web"
+      - "traefik.http.services.megarouter.loadbalancer.server.port=3000"
+    networks:
+      - backend
+      - traefik
 
 volumes:
   ipfs_data:
   postgres_data:
+
+networks:
+  backend:
+    name: backend
+  traefik:
+    external: true

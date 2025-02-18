@@ -4,6 +4,9 @@ rell/src/lib/
 build/
 .chromia/
 
+# Docker
+traefik_data/
+
 # Logs
 
 logs
