@@ -1,4 +1,4 @@
-# Mega Router
+# MegaRouter
 
 An API service that routes incoming metadata requests to the appropriate blockchain where the token currently resides.
 

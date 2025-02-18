@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+  ipfs:
+    image: ipfs/kubo:latest
+    ports:
+      - "4001:4001"  # IPFS swarm
+      - "5001:5001"  # IPFS API
+      - "8080:8080"  # IPFS Gateway (default)
+    volumes:
+      - ipfs_data:/data/ipfs
+    restart: unless-stopped
+
+  gateway:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - ipfs
+    restart: unless-stopped
+
+volumes:
+  ipfs_data:
+  postgres_data:
