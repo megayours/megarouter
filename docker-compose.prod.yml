@@ -1,6 +1,8 @@
 services:
   postgres:
     image: postgres:16
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -13,6 +15,8 @@ services:
 
   ipfs:
     image: ipfs/kubo:latest
+    ports:
+      - "5001:5001"
     volumes:
       - ipfs_data:/data/ipfs
     restart: unless-stopped
@@ -42,7 +46,7 @@ services:
       - "traefik.http.routers.megarouter-secure.rule=Host(`router1.testnet.megayours.com`)"
       - "traefik.http.routers.megarouter-secure.entrypoints=websecure"
       - "traefik.http.routers.megarouter-secure.tls=true"
-      - "traefik.http.routers.megarouter-secure.tls.certresolver=letencrypt"
+      - "traefik.http.routers.megarouter-secure.tls.certresolver=letsencrypt"
       # Service (shared between both routers)
       - "traefik.http.services.megarouter.loadbalancer.server.port=3000"
     networks:
