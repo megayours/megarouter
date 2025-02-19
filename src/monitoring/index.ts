@@ -3,8 +3,15 @@ import winston from 'winston';
 import LokiTransport from 'winston-loki';
 import { config } from '../config';
 
-// Create a new Prometheus Registry
+// Get environment label from env vars
+const environment = process.env.ENVIRONMENT || 'development';
+
+// Create a new Prometheus Registry with default labels
 export const register = new Registry();
+register.setDefaultLabels({
+  environment,
+  service: 'megarouter'
+});
 
 // Enable default metrics collection
 collectDefaultMetrics({ register });
@@ -45,12 +52,18 @@ export const logger = winston.createLogger({
     winston.format.timestamp(),
     winston.format.json()
   ),
-  defaultMeta: { service: 'megarouter' },
+  defaultMeta: { 
+    service: 'megarouter',
+    environment 
+  },
   transports: [
     new winston.transports.Console(),
     new LokiTransport({
       host: process.env.LOKI_URL || 'http://loki:3100',
-      labels: { job: 'megarouter' },
+      labels: { 
+        job: 'megarouter',
+        environment 
+      },
       json: true,
       format: winston.format.json(),
       replaceTimestamp: true,

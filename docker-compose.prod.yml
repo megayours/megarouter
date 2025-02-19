@@ -31,9 +31,6 @@ services:
     env_file:
       - path: ./.env
         required: true
-    environment:
-      - METRICS_PORT=9090
-      - LOKI_URL=https://loki.infra.megayours.com
     depends_on:
       - postgres
       - ipfs
