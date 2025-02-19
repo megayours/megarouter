@@ -6,6 +6,8 @@ const ipfs = create({
   url: config.ipfs.url,
 })
 
+logger.info('IPFS API Created', { apiUrl: config.ipfs.url })
+
 // Set of common image extensions and their MIME types
 const IMAGE_TYPES = new Map([
   ['.jpg', 'image/jpeg'],
