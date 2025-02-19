@@ -1,5 +1,6 @@
 import { create } from 'ipfs-http-client';
 import { config } from '../config';
+import { ipfsRequestsTotal, logger } from '../monitoring';
 
 const ipfs = create({
   url: config.ipfs.url,
@@ -35,12 +36,21 @@ function extractCidFromIpfsUrl(ipfsUrl: string): string | null {
   return match ? match[1] : null;
 }
 
-async function getContent(path: string): Promise<Uint8Array> {
+async function getIpfsContent(cid: string, path: string): Promise<Uint8Array> {
   const chunks: Uint8Array[] = [];
-  for await (const chunk of ipfs.cat(path)) {
+  for await (const chunk of ipfs.cat(`/ipfs/${cid}${path ? `/${path}` : ''}`)) {
     chunks.push(chunk);
   }
-  return Buffer.concat(chunks);
+  
+  // Combine all chunks into a single Uint8Array
+  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result;
 }
 
 function getFileExtension(path: string): string {
@@ -55,20 +65,29 @@ function isImagePath(path: string): boolean {
 
 export async function downloadIpfsFile(uri: string): Promise<IpfsContent> {
   try {
+    logger.info('Starting IPFS download', { uri });
+
     // Remove ipfs:// prefix if present and split into CID and path
     const cleanUri = uri.replace('ipfs://', '');
     const [cid, ...pathParts] = cleanUri.split('/');
     const path = pathParts.join('/');
 
-    const targetPath = cid + (path ? '/' + path : '');
+    // Get file stats and content
+    const stats = await ipfs.files.stat(`/ipfs/${cid}${path ? `/${path}` : ''}`);
+    const content = await getIpfsContent(cid, path);
 
-    // Get IPFS stats for the requested path
-    const stats = await ipfs.files.stat('/ipfs/' + targetPath);
+    ipfsRequestsTotal.inc({ status: 'success' });
+    logger.info('IPFS download complete', { 
+      uri,
+      cid: stats.cid.toString(),
+      size: stats.size,
+      type: stats.type
+    });
 
     // Handle directories
     if (stats.type === 'directory') {
       const files = [];
-      for await (const file of ipfs.ls(targetPath)) {
+      for await (const file of ipfs.ls(`/ipfs/${cid}${path ? `/${path}` : ''}`)) {
         files.push({
           name: file.name,
           type: file.type,
@@ -92,12 +111,9 @@ export async function downloadIpfsFile(uri: string): Promise<IpfsContent> {
       };
     }
 
-    // Get the content
-    const content = await getContent(targetPath);
-
     // If it's an image path, return as binary with appropriate mime type
-    if (isImagePath(targetPath)) {
-      const ext = getFileExtension(targetPath);
+    if (isImagePath(cid + (path ? '/' + path : ''))) {
+      const ext = getFileExtension(cid + (path ? '/' + path : ''));
       return {
         data: content,
         mimeType: IMAGE_TYPES.get(ext) || 'application/octet-stream',
@@ -122,6 +138,11 @@ export async function downloadIpfsFile(uri: string): Promise<IpfsContent> {
           const imageCid = extractCidFromIpfsUrl(jsonContent.image);
           if (imageCid) {
             discoveredImageCids.add(imageCid);
+            logger.debug('Discovered image CID in metadata', { 
+              uri,
+              imageCid,
+              imageUrl: jsonContent.image 
+            });
           }
         }
       }
@@ -150,7 +171,11 @@ export async function downloadIpfsFile(uri: string): Promise<IpfsContent> {
       };
     }
   } catch (error) {
-    console.error('Failed to download IPFS file:', error);
+    ipfsRequestsTotal.inc({ status: 'error' });
+    logger.error('Failed to download IPFS file', {
+      uri,
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw error;
   }
 }

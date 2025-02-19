@@ -23,16 +23,27 @@ services:
     build: .
     ports:
       - "3000:3000"
+      - "9090:9090"
     env_file:
       - .env
+    environment:
+      - METRICS_PORT=9090
+      - LOKI_URL=https://loki.infra.megayours.com
     depends_on:
       - postgres
       - ipfs
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.megarouter.rule=Host(`testnet-router1.megayours.com`)"
+      # HTTP Router
+      - "traefik.http.routers.megarouter.rule=Host(`router1.testnet.megayours.com`)"
       - "traefik.http.routers.megarouter.entrypoints=web"
+      # HTTPS Router
+      - "traefik.http.routers.megarouter-secure.rule=Host(`router1.testnet.megayours.com`)"
+      - "traefik.http.routers.megarouter-secure.entrypoints=websecure"
+      - "traefik.http.routers.megarouter-secure.tls=true"
+      - "traefik.http.routers.megarouter-secure.tls.certresolver=letencrypt"
+      # Service (shared between both routers)
       - "traefik.http.services.megarouter.loadbalancer.server.port=3000"
     networks:
       - backend
