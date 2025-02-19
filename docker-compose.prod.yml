@@ -29,7 +29,8 @@ services:
       - "3000:3000"
       - "9090:9090"
     env_file:
-      - .env
+      - path: ./.env
+        required: true
     environment:
       - METRICS_PORT=9090
       - LOKI_URL=https://loki.infra.megayours.com
