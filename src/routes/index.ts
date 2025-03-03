@@ -4,7 +4,7 @@ import { formatToERC1155, formatToERC721 } from '../util/metadata';
 import { YoursMetadataStandard } from '../types/token-info';
 import { downloadIpfsFile } from '../services/ipfs';
 
-type Standard = 'erc721' | 'erc1155' | 'yours';
+type Standard = 'erc721' | 'erc1155' | 'yours' | 'not_specified';
 
 // Function to transform Buffer objects to hex strings in responses
 const transformBuffers = (value: any): any => {
@@ -33,16 +33,18 @@ const parseStandardAndIpfsUri = (uri: string): { standard: Standard, ipfsUri: st
     return { standard: 'erc721', ipfsUri: uriWithoutProtocol.replace('erc721/', '') };
   } else if (uriWithoutProtocol.startsWith('erc1155/')) {
     return { standard: 'erc1155', ipfsUri: uriWithoutProtocol.replace('erc1155/', '') };
+  } else if (uriWithoutProtocol.startsWith('yours/')) {
+    return { standard: 'yours', ipfsUri: uriWithoutProtocol.replace('yours/', '') };
   } else {
     // If no standard prefix is found, use the entire URI as ipfsUri
-    return { standard: 'yours', ipfsUri: uriWithoutProtocol.replace('yours/', '') };
+    return { standard: 'not_specified', ipfsUri: uriWithoutProtocol };
   }
 }
 
 const formatMetadata = (standard: Standard, metadata: YoursMetadataStandard) => {
-  if (standard === 'erc721') {
+  if (standard === 'erc721' || (standard === 'not_specified' && metadata.yours.modules.includes('erc721'))) {
     return formatToERC721(metadata);
-  } else if (standard === 'erc1155') {
+  } else if (standard === 'erc1155' || (standard === 'not_specified' && metadata.yours.modules.includes('erc1155'))) {
     return formatToERC1155(metadata);
   }
 
@@ -88,7 +90,7 @@ export const handleMetadataRoute = async (path: string, corsHeaders: Record<stri
     });
   }
 
-  const metadata = await getMetadata(standard, decodedProject, decodedCollection, token_id);
+  const metadata = await getMetadata(standard, decodedCollection, token_id);
   if (!metadata) {
     return new Response('Not Found', {
       status: 404,
@@ -105,7 +107,7 @@ export const handleMetadataRoute = async (path: string, corsHeaders: Record<stri
 export const handleIpfsRoute = async (path: string, corsHeaders: Record<string, string>) => {
   const uri = path.replace('/ipfs/', '');
   const decodedUri = decodeURIComponent(uri);
-  const { standard = 'yours', ipfsUri } = parseStandardAndIpfsUri(decodedUri);
+  const { standard, ipfsUri } = parseStandardAndIpfsUri(decodedUri);
 
   const metadata = await getMetadataByIpfs(standard, ipfsUri);
   if (!metadata) {

@@ -20,17 +20,6 @@ type ERC721Metadata = {
   youtube_url?: string;
 };
 
-type MetadataProperties = {
-  description?: unknown;
-  image?: unknown;
-  image_data?: unknown;
-  external_url?: unknown;
-  background_color?: unknown;
-  animation_url?: unknown;
-  youtube_url?: unknown;
-  [key: string]: unknown;
-};
-
 export function formatToERC721(metadata: YoursMetadataStandard): ERC721Metadata {
   const properties = metadata.properties;
   const result: ERC721Metadata = {
