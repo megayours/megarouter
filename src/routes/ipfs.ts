@@ -5,5 +5,5 @@ export async function getMetadataByIpfs(standard: string, ipfsUri: string) {
   console.log(`Token target: ${tokenTarget}`);
   if (!tokenTarget) return null;
 
-  return getMetadata(standard, tokenTarget.project, tokenTarget.collection, tokenTarget.token_id.toString());
+  return getMetadata(standard, tokenTarget.id);
 }

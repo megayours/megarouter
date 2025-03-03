@@ -1,15 +1,13 @@
-import { Project } from "@megayours/sdk";
-
 export type YoursMetadataStandard = {
   name: string;
   properties: Record<string, unknown>;
   yours: {
-    blockchains: Buffer[];
-    project: Project;
-    collection: string;
+    issuing_chain: Buffer;
+    decimals: number;
     modules: string[];
+    type: string;
+    blockchains: Buffer[];
   },
-  type: string;
 }
 
 export type TokenInfo = {
@@ -18,7 +16,6 @@ export type TokenInfo = {
 }
 
 export type TokenTarget = {
-  project: string;
-  collection: string;
-  token_id: bigint;
+  id: Buffer
+  issuing_chain: Buffer
 }

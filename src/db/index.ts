@@ -5,8 +5,6 @@ import { config } from '../config';
 export const tokenIndex = {
   id: 'id',
   standard: 'standard',
-  project: 'project',
-  collection: 'collection',
   tokenId: 'token_id',
   blockchainRid: 'blockchain_rid',
   lastUpdated: 'last_updated'
@@ -22,8 +20,6 @@ export async function setupDatabase() {
     CREATE TABLE IF NOT EXISTS token_index (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       standard TEXT NOT NULL,
-      project TEXT NOT NULL,
-      collection TEXT NOT NULL,
       token_id TEXT NOT NULL,
       blockchain_rid TEXT NOT NULL,
       last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -34,13 +30,11 @@ export async function setupDatabase() {
 }
 
 // Helper functions for database operations
-export async function findTokenMetadata(standard: string, project: string, collection: string, tokenId: string) {
+export async function findTokenMetadata(standard: string, tokenId: Buffer) {
   const result = await sql`
     SELECT * FROM token_index
     WHERE standard = ${standard}
-    AND project = ${project}
-    AND collection = ${collection}
-    AND token_id = ${tokenId}
+    AND token_id = ${tokenId.toString('hex')}
     LIMIT 1
   `;
 
@@ -49,21 +43,17 @@ export async function findTokenMetadata(standard: string, project: string, colle
 
 export async function insertTokenMetadata(
   standard: string,
-  project: string,
-  collection: string,
-  tokenId: string,
+  tokenId: Buffer,
   blockchainRid: string
 ) {
   return await sql`
     INSERT INTO token_index (
       standard,
-      project,
-      collection,
       token_id,
       blockchain_rid,
       last_updated
     ) VALUES (
-      ${standard}, ${project}, ${collection}, ${tokenId}, ${blockchainRid}, CURRENT_TIMESTAMP
+      ${standard}, ${tokenId.toString('hex')}, ${blockchainRid}, CURRENT_TIMESTAMP
     )
   `;
 }
@@ -78,11 +68,11 @@ export async function findTokenMetadataByBlockchainRid(blockchainRid: string) {
   return result.length > 0 ? result[0] : null;
 }
 
-export async function updateTokenLocation(id: string, blockchainRid: Buffer) {
+export async function updateTokenLocation(id: Buffer, blockchainRid: Buffer) {
   return await sql`
     UPDATE token_index
     SET blockchain_rid = ${blockchainRid.toString('hex')},
     last_updated = CURRENT_TIMESTAMP
-    WHERE id = ${id}
+    WHERE token_id = ${id.toString('hex')}
   `;
 } 

@@ -24,14 +24,12 @@ const getClient = async (blockchainRid: Buffer) => {
   return clients.get(blockchainRidHex);
 };
 
-export const getMetadata = async (blockchainRid: Buffer, project: string, collection: string, tokenId: bigint) => {
+export const getMetadata = async (blockchainRid: Buffer, id: Buffer) => {
   try {
     const client = await getClient(blockchainRid);
     const args = {
-      project_name: project,
-      project_blockchain_rid: config.blockchain.gammaChainBlockchainRidBuffer,
-      collection,
-      token_id: tokenId,
+      id,
+      issuing_chain: config.blockchain.gammaChainBlockchainRidBuffer,
     }
     return client?.query('yours.active_metadata', args);
   } catch (error) {
@@ -49,18 +47,15 @@ export const getTokenTargetByIpfs = async (ipfsUri: string) => {
   return client?.query<TokenTarget>('oracle.get_token_target_by_ipfs', args);
 }
 
-export const getRecentTargetChain = async (blockchainRid: Buffer, project: string, collection: string, tokenId: bigint): Promise<Buffer | null> => {
+export const getRecentTargetChain = async (blockchainRid: Buffer, id: Buffer): Promise<Buffer | null> => {
   try {
     const client = await getClient(blockchainRid);
     const history = await client?.query<{ data: { blockchain_rid: Buffer }[] }>('yours.get_transfer_history', {
       account_id: null,
-      token_uid: null,
+      id,
+      issuing_chain: config.blockchain.gammaChainBlockchainRidBuffer,
       from_height: null,
       page_cursor: null,
-      project_name: project,
-      project_blockchain_rid: config.blockchain.gammaChainBlockchainRidBuffer,
-      collection,
-      token_id: tokenId,
       type: 'sent',
       page_size: 1,
     });
