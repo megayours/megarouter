@@ -20,9 +20,9 @@ type ERC721Metadata = {
   youtube_url?: string;
 };
 
-export function formatToERC721(metadata: YoursMetadataStandard): ERC721Metadata {
+export function formatToERC721(metadata: YoursMetadataStandard, full: boolean): any {
   const properties = metadata.properties;
-  const result: ERC721Metadata = {
+  const result: any = {
     name: metadata.name,
     attributes: [],
   };
@@ -61,6 +61,10 @@ export function formatToERC721(metadata: YoursMetadataStandard): ERC721Metadata 
     }
   }
 
+  if (full) {
+    result.yours = metadata.yours;
+  }
+
   return result;
 }
 
@@ -72,7 +76,7 @@ type ERC1155Metadata = {
   localization?: Record<string, unknown>;
 }
 
-export function formatToERC1155(metadata: YoursMetadataStandard): ERC1155Metadata {
+export function formatToERC1155(metadata: YoursMetadataStandard, full: boolean): any {
   const { properties } = metadata;
   const reservedKeys = new Set(['description', 'image', 'localization']);
 
@@ -80,7 +84,7 @@ export function formatToERC1155(metadata: YoursMetadataStandard): ERC1155Metadat
     .filter(([key]) => !reservedKeys.has(key))
     .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
 
-  const result: ERC1155Metadata = {
+  const result: any = {
     name: metadata.name,
     properties: filteredProperties,
   };
@@ -88,6 +92,10 @@ export function formatToERC1155(metadata: YoursMetadataStandard): ERC1155Metadat
   if (properties.description) result.description = String(properties.description);
   if (properties.image) result.image = String(properties.image);
   if (properties.localization) result.localization = properties.localization as Record<string, unknown>;
+
+  if (full) {
+    result.yours = metadata.yours;
+  }
 
   return result;
 }

@@ -27,24 +27,28 @@ const transformBuffers = (value: any): any => {
   return value;
 };
 
-const parseStandardAndUri = (uri: string): { standard: Standard, uri: string } => {
-  if (uri.startsWith('erc721/')) {
-    return { standard: 'erc721', uri: uri.replace('erc721/', '') };
+const parseStandardAndUri = (uri: string): { full: boolean, standard: Standard, uri: string } => {
+  if (uri.startsWith('erc721/full')) {
+    return { full: true, standard: 'erc721', uri: uri.replace('erc721/full/', '') };
+  } else if (uri.startsWith('erc1155/full')) {
+    return { full: true, standard: 'erc1155', uri: uri.replace('erc1155/full/', '') };
+  } else if (uri.startsWith('erc721/')) {
+    return { full: false, standard: 'erc721', uri: uri.replace('erc721/', '') };
   } else if (uri.startsWith('erc1155/')) {
-    return { standard: 'erc1155', uri: uri.replace('erc1155/', '') };
+    return { full: false, standard: 'erc1155', uri: uri.replace('erc1155/', '') };
   } else if (uri.startsWith('yours/')) {
-    return { standard: 'yours', uri: uri.replace('yours/', '') };
+    return { full: true, standard: 'yours', uri: uri.replace('yours/', '') };
   } else {
     // If no standard prefix is found, use the entire URI as ipfsUri
-    return { standard: 'not_specified', uri: uri };
+    return { full: false, standard: 'not_specified', uri: uri };
   }
 }
 
-const formatMetadata = (standard: Standard, metadata: YoursMetadataStandard) => {
+const formatMetadata = (standard: Standard, full: boolean, metadata: YoursMetadataStandard) => {
   if (standard === 'erc721' || (standard === 'not_specified' && metadata.yours.modules.includes('erc721'))) {
-    return formatToERC721(metadata);
+    return formatToERC721(metadata, full);
   } else if (standard === 'erc1155' || (standard === 'not_specified' && metadata.yours.modules.includes('erc1155'))) {
-    return formatToERC1155(metadata);
+    return formatToERC1155(metadata, full);
   }
 
   return metadata;
@@ -59,7 +63,7 @@ export const handleMetadataRoute = async (path: string, corsHeaders: Record<stri
   let standard: Standard = 'yours';
   let collection: string;
   let token_id: string;
-
+  let full: boolean = false;
   if (parts.length === 2) {
     [collection, token_id] = parts;
   } else if (parts.length === 3) {
@@ -97,7 +101,7 @@ export const handleMetadataRoute = async (path: string, corsHeaders: Record<stri
     });
   }
 
-  const transformedMetadata = transformBuffers(formatMetadata(standard, metadata));
+  const transformedMetadata = transformBuffers(formatMetadata(standard, full, metadata));
   return Response.json(transformedMetadata, {
     headers: corsHeaders
   });
@@ -106,7 +110,7 @@ export const handleMetadataRoute = async (path: string, corsHeaders: Record<stri
 export const handleExtendingMetadataRoute = async (path: string, corsHeaders: Record<string, string>) => {
   const preparedUri = path.replace('/ext/', '');
   const decodedUri = decodeURIComponent(preparedUri);
-  const { standard, uri } = parseStandardAndUri(decodedUri);
+  const { standard, uri, full } = parseStandardAndUri(decodedUri);
 
   const metadata = await getMetadataByExtendingMetadata(standard, uri);
 
@@ -160,7 +164,7 @@ export const handleExtendingMetadataRoute = async (path: string, corsHeaders: Re
     });
   }
 
-  const transformedMetadata = transformBuffers(formatMetadata(standard, metadata));
+  const transformedMetadata = transformBuffers(formatMetadata(standard, full, metadata));
   return Response.json(transformedMetadata, {
     headers: corsHeaders
   });
