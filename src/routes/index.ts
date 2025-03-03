@@ -1,5 +1,5 @@
 import { getMetadata } from './metadata';
-import { getMetadataByIpfs } from './ipfs';
+import { getMetadataByExtendingMetadata } from './extending';
 import { formatToERC1155, formatToERC721 } from '../util/metadata';
 import { YoursMetadataStandard } from '../types/token-info';
 import { downloadIpfsFile } from '../services/ipfs';
@@ -27,17 +27,16 @@ const transformBuffers = (value: any): any => {
   return value;
 };
 
-const parseStandardAndIpfsUri = (uri: string): { standard: Standard, ipfsUri: string } => {
-  const uriWithoutProtocol = uri.replace('ipfs://', '').replace('https://', '');
-  if (uriWithoutProtocol.startsWith('erc721/')) {
-    return { standard: 'erc721', ipfsUri: uriWithoutProtocol.replace('erc721/', '') };
-  } else if (uriWithoutProtocol.startsWith('erc1155/')) {
-    return { standard: 'erc1155', ipfsUri: uriWithoutProtocol.replace('erc1155/', '') };
-  } else if (uriWithoutProtocol.startsWith('yours/')) {
-    return { standard: 'yours', ipfsUri: uriWithoutProtocol.replace('yours/', '') };
+const parseStandardAndUri = (uri: string): { standard: Standard, uri: string } => {
+  if (uri.startsWith('erc721/')) {
+    return { standard: 'erc721', uri: uri.replace('erc721/', '') };
+  } else if (uri.startsWith('erc1155/')) {
+    return { standard: 'erc1155', uri: uri.replace('erc1155/', '') };
+  } else if (uri.startsWith('yours/')) {
+    return { standard: 'yours', uri: uri.replace('yours/', '') };
   } else {
     // If no standard prefix is found, use the entire URI as ipfsUri
-    return { standard: 'not_specified', ipfsUri: uriWithoutProtocol };
+    return { standard: 'not_specified', uri: uri };
   }
 }
 
@@ -90,7 +89,7 @@ export const handleMetadataRoute = async (path: string, corsHeaders: Record<stri
     });
   }
 
-  const metadata = await getMetadata(standard, decodedCollection, token_id);
+  const metadata = await getMetadata(standard, collection, token_id);
   if (!metadata) {
     return new Response('Not Found', {
       status: 404,
@@ -104,14 +103,34 @@ export const handleMetadataRoute = async (path: string, corsHeaders: Record<stri
   });
 };
 
-export const handleIpfsRoute = async (path: string, corsHeaders: Record<string, string>) => {
-  const uri = path.replace('/ipfs/', '');
-  const decodedUri = decodeURIComponent(uri);
-  const { standard, ipfsUri } = parseStandardAndIpfsUri(decodedUri);
+export const handleExtendingMetadataRoute = async (path: string, corsHeaders: Record<string, string>) => {
+  const preparedUri = path.replace('/ext/', '');
+  const decodedUri = decodeURIComponent(preparedUri);
+  const { standard, uri } = parseStandardAndUri(decodedUri);
 
-  const metadata = await getMetadataByIpfs(standard, ipfsUri);
+  const metadata = await getMetadataByExtendingMetadata(standard, uri);
+
   if (!metadata) {
-    const ipfsContent = await downloadIpfsFile(ipfsUri);
+    if (uri.startsWith('http')) {
+      const content = await fetch(uri);
+
+      if (content.headers.get('Content-Type') === 'application/json') {
+        const transformedData = transformBuffers(await content.json());
+        return Response.json(transformedData, {
+          headers: corsHeaders
+        });
+      } else {
+        const data = await content.arrayBuffer();
+        return new Response(data, {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': content.headers.get('Content-Type') || 'application/octet-stream',
+          }
+        });
+      }
+    }
+
+    const ipfsContent = await downloadIpfsFile(uri);
     if (!ipfsContent) return new Response('Not Found', {
       status: 404,
       headers: corsHeaders
@@ -145,4 +164,4 @@ export const handleIpfsRoute = async (path: string, corsHeaders: Record<string, 
   return Response.json(transformedMetadata, {
     headers: corsHeaders
   });
-};
+}

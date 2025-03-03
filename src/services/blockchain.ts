@@ -38,13 +38,13 @@ export const getMetadata = async (blockchainRid: Buffer, id: Buffer) => {
   }
 };
 
-export const getTokenTargetByIpfs = async (ipfsUri: string) => {
-  console.log(`Getting token target by IPFS: ${ipfsUri}`);
+export const getTokenTargetByExtendingMetadata = async (uri: string) => {
+  console.log(`Getting token target by extending metadata: ${uri}`);
   const client = await getClient(config.blockchain.gammaChainBlockchainRidBuffer);
   const args = {
-    uri: ipfsUri,
+    uri
   }
-  return client?.query<TokenTarget>('oracle.get_token_target_by_ipfs', args);
+  return client?.query<TokenTarget>('oracle.get_token_target_by_extending_metadata_uri', args);
 }
 
 export const getRecentTargetChain = async (blockchainRid: Buffer, id: Buffer): Promise<Buffer | null> => {

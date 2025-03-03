@@ -1,5 +1,5 @@
 import { setupDatabase } from './db';
-import { handleMetadataRoute, handleIpfsRoute } from './routes';
+import { handleMetadataRoute, handleExtendingMetadataRoute } from './routes';
 import { register, logger, httpRequestsTotal, httpRequestDuration } from './monitoring';
 
 // Initialize database
@@ -53,9 +53,9 @@ const server = Bun.serve({
       else if (path.startsWith('/metadata/')) {
         response = await handleMetadataRoute(path, corsHeaders);
       }
-      // Handle IPFS route
-      else if (path.startsWith('/ipfs/')) {
-        response = await handleIpfsRoute(path, corsHeaders);
+      // Handle    route
+      else if (path.startsWith('/ext/')) {
+        response = await handleExtendingMetadataRoute(path, corsHeaders);
       }
       else {
         response = new Response('Not Found', {
