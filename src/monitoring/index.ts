@@ -1,7 +1,6 @@
 import { collectDefaultMetrics, Registry, Counter, Histogram } from 'prom-client';
 import winston from 'winston';
 import LokiTransport from 'winston-loki';
-import { config } from '../config';
 
 // Get environment label from env vars
 const environment = process.env.ENVIRONMENT || 'development';
