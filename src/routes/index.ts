@@ -35,7 +35,7 @@ const parseStandardAndIpfsUri = (uri: string): { standard: Standard, ipfsUri: st
     return { standard: 'erc1155', ipfsUri: uriWithoutProtocol.replace('erc1155/', '') };
   } else {
     // If no standard prefix is found, use the entire URI as ipfsUri
-    return { standard: 'yours', ipfsUri: uriWithoutProtocol };
+    return { standard: 'yours', ipfsUri: uriWithoutProtocol.replace('yours/', '') };
   }
 }
 
@@ -56,14 +56,13 @@ export const handleMetadataRoute = async (path: string, corsHeaders: Record<stri
   // If we have 3 parts, there's no standard specified
   // If we have 4 parts, standard is specified
   let standard: Standard = 'yours';
-  let project: string;
   let collection: string;
   let token_id: string;
 
-  if (parts.length === 3) {
-    [project, collection, token_id] = parts;
-  } else if (parts.length === 4) {
-    [standard, project, collection, token_id] = parts as [Standard, string, string, string];
+  if (parts.length === 2) {
+    [collection, token_id] = parts;
+  } else if (parts.length === 3) {
+    [standard, collection, token_id] = parts as [Standard, string, string, string];
   } else {
     return new Response('Invalid parameters', {
       status: 400,
@@ -72,11 +71,10 @@ export const handleMetadataRoute = async (path: string, corsHeaders: Record<stri
   }
 
   console.log('standard', standard);
-  console.log('project', project);
   console.log('collection', collection);
   console.log('token_id', token_id);
 
-  if (!project || !collection || !token_id) {
+  if (!collection || !token_id) {
     return new Response('Invalid parameters', {
       status: 400,
       headers: corsHeaders
@@ -89,9 +87,6 @@ export const handleMetadataRoute = async (path: string, corsHeaders: Record<stri
       headers: corsHeaders
     });
   }
-
-  const decodedProject = decodeURIComponent(project);
-  const decodedCollection = decodeURIComponent(collection);
 
   const metadata = await getMetadata(standard, decodedProject, decodedCollection, token_id);
   if (!metadata) {

@@ -32,40 +32,45 @@ type MetadataProperties = {
 };
 
 export function formatToERC721(metadata: YoursMetadataStandard): ERC721Metadata {
-  const properties = metadata.properties as MetadataProperties;
+  const properties = metadata.properties;
   const result: ERC721Metadata = {
     name: metadata.name,
     attributes: [],
   };
 
-  if (properties.description) result.description = String(properties.description);
-  if (properties.image) result.image = String(properties.image);
-  if (properties.image_data) result.image_data = String(properties.image_data);
-  if (properties.external_url) result.external_url = String(properties.external_url);
-  if (properties.background_color) result.background_color = String(properties.background_color);
-  if (properties.animation_url) result.animation_url = String(properties.animation_url);
-  if (properties.youtube_url) result.youtube_url = String(properties.youtube_url);
+  const supportedModules = metadata.yours.modules;
 
-  const reservedKeys = new Set([
-    'description', 'image', 'image_data', 'external_url',
-    'background_color', 'animation_url', 'youtube_url'
-  ]);
+  if (supportedModules.includes('erc721')) {
+    const erc721 = metadata.properties.erc721 as ERC721Metadata;
+    if (erc721.description) result.description = String(erc721.description);
+    if (erc721.image) result.image = String(erc721.image);
+    if (erc721.image_data) result.image_data = String(erc721.image_data);
+    if (erc721.external_url) result.external_url = String(erc721.external_url);
+    if (erc721.background_color) result.background_color = String(erc721.background_color);
+    if (erc721.animation_url) result.animation_url = String(erc721.animation_url);
+    if (erc721.youtube_url) result.youtube_url = String(erc721.youtube_url);
 
-  result.attributes = Object.entries(properties)
-    .filter(([key]) => !reservedKeys.has(key))
-    .map(([key, value]): ERC721MetadataAttribute => {
-      if (typeof value === 'object' && value !== null && 'value' in value && 'display_type' in value) {
-        return {
-          trait_type: key,
-          value: value.value as ERC721AttributeValue,
-          display_type: value.display_type as string,
-        };
+    for (const attribute of erc721.attributes) {
+      result.attributes.push({
+        trait_type: attribute.trait_type,
+        value: attribute.value,
+      });
+    }
+
+    metadata.properties.erc721 = undefined;
+  }
+
+  for (const module of supportedModules) {
+    if (properties[module]) {
+      const moduleProperties = properties[module];
+      for (const [key, value] of Object.entries(moduleProperties)) {
+        result.attributes.push({
+          trait_type: `${module}.${key}`,
+          value: value,
+        });
       }
-      return {
-        trait_type: key,
-        value: value as ERC721AttributeValue,
-      };
-    });
+    }
+  }
 
   return result;
 }
