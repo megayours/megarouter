@@ -4,7 +4,6 @@ import { config } from '../config';
 // Define token index schema
 export const tokenIndex = {
   id: 'id',
-  standard: 'standard',
   tokenId: 'token_id',
   blockchainRid: 'blockchain_rid',
   lastUpdated: 'last_updated'
@@ -19,7 +18,6 @@ export async function setupDatabase() {
   await sql`
     CREATE TABLE IF NOT EXISTS token_index (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      standard TEXT NOT NULL,
       token_id TEXT NOT NULL,
       blockchain_rid TEXT NOT NULL,
       last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -30,42 +28,29 @@ export async function setupDatabase() {
 }
 
 // Helper functions for database operations
-export async function findTokenMetadata(standard: string, tokenId: Buffer) {
+export async function findTokenLocation(tokenId: Buffer) {
   const result = await sql`
     SELECT * FROM token_index
-    WHERE standard = ${standard}
-    AND token_id = ${tokenId.toString('hex')}
+    WHERE token_id = ${tokenId.toString('hex')}
     LIMIT 1
   `;
 
   return result.length > 0 ? result[0] : null;
 }
 
-export async function insertTokenMetadata(
-  standard: string,
+export async function insertTokenLocation(
   tokenId: Buffer,
   blockchainRid: string
 ) {
   return await sql`
     INSERT INTO token_index (
-      standard,
       token_id,
       blockchain_rid,
       last_updated
     ) VALUES (
-      ${standard}, ${tokenId.toString('hex')}, ${blockchainRid}, CURRENT_TIMESTAMP
+      ${tokenId.toString('hex')}, ${blockchainRid}, CURRENT_TIMESTAMP
     )
   `;
-}
-
-export async function findTokenMetadataByBlockchainRid(blockchainRid: string) {
-  const result = await sql`
-    SELECT * FROM token_index
-    WHERE blockchain_rid = ${blockchainRid}
-    LIMIT 1
-  `;
-
-  return result.length > 0 ? result[0] : null;
 }
 
 export async function updateTokenLocation(id: Buffer, blockchainRid: Buffer) {
@@ -75,4 +60,10 @@ export async function updateTokenLocation(id: Buffer, blockchainRid: Buffer) {
     last_updated = CURRENT_TIMESTAMP
     WHERE token_id = ${id.toString('hex')}
   `;
-} 
+}
+
+export async function deleteTokenLocation(tokenId: Buffer) {
+  return await sql`
+    DELETE FROM token_index WHERE token_id = ${tokenId.toString('hex')}
+  `;
+}

@@ -57,7 +57,7 @@ export const handleERC721TokenMetadataRoute = async (path: string, corsHeaders: 
     return createErrorResponse('Not Found', 404, corsHeaders);
   }
 
-  const metadata = await getMetadata(standard, tokenTarget.id);
+  const metadata = await getMetadata(tokenTarget.id);
   if (!metadata) {
     return createErrorResponse('Not Found', 404, corsHeaders);
   }

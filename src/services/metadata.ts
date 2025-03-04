@@ -44,7 +44,7 @@ export const fetchData = async (uri: string): Promise<MimeDataResponse | null> =
 };
 
 export const getFormattedMetadata = async (standard: Standard, uri: string, full: boolean): Promise<MimeDataResponse | null> => {
-  const metadata = await getMetadataByExtendingMetadata(standard, uri);
+  const metadata = await getMetadataByExtendingMetadata(uri);
   
   if (!metadata) {
     return fetchData(uri);
