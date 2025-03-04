@@ -1,5 +1,5 @@
 import { setupDatabase } from './db';
-import { handleMetadataRoute, handleExtendingMetadataRoute } from './routes';
+import { handleERC721TokenMetadataRoute, handleExtendingMetadataRoute } from './routes';
 import { register, logger, httpRequestsTotal, httpRequestDuration } from './monitoring';
 
 // Initialize database
@@ -50,8 +50,8 @@ const server = Bun.serve({
         });
       }
       // Handle metadata route
-      else if (path.startsWith('/metadata/')) {
-        response = await handleMetadataRoute(path, corsHeaders);
+      else if (path.startsWith('/erc721/')) {
+        response = await handleERC721TokenMetadataRoute(path, corsHeaders);
       }
       // Handle    route
       else if (path.startsWith('/ext/')) {

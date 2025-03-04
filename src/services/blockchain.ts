@@ -47,6 +47,15 @@ export const getTokenTargetByExtendingMetadata = async (uri: string) => {
   return client?.query<TokenTarget>('oracle.get_token_target_by_extending_metadata_uri', args);
 }
 
+export const getTokenTargetByCollectionAndERC721TokenId = async (collection: string, tokenId: bigint) => {
+  const client = await getClient(config.blockchain.gammaChainBlockchainRidBuffer);
+  const args = {
+    collection,
+    token_id: tokenId,
+  }
+  return client?.query<TokenTarget>('oracle.get_token_target_by_erc721_collection', args);
+}
+
 export const getRecentTargetChain = async (blockchainRid: Buffer, id: Buffer): Promise<Buffer | null> => {
   try {
     const client = await getClient(blockchainRid);

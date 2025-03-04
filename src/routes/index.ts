@@ -3,6 +3,7 @@ import { getMetadataByExtendingMetadata } from './extending';
 import { formatToERC1155, formatToERC721 } from '../util/metadata';
 import { YoursMetadataStandard } from '../types/token-info';
 import { downloadIpfsFile } from '../services/ipfs';
+import { getTokenTargetByCollectionAndERC721TokenId } from '../services/blockchain';
 
 type Standard = 'erc721' | 'erc1155' | 'yours' | 'not_specified';
 
@@ -54,46 +55,41 @@ const formatMetadata = (standard: Standard, full: boolean, metadata: YoursMetada
   return metadata;
 }
 
-export const handleMetadataRoute = async (path: string, corsHeaders: Record<string, string>) => {
+export const handleERC721TokenMetadataRoute = async (path: string, corsHeaders: Record<string, string>) => {
   // Remove leading slash and split
-  const parts = path.replace('/metadata/', '').replace(/^\//, '').split('/');
+  const decodedPath = decodeURIComponent(path).replace('/erc721/', 'erc721/'); //.replace(/^\//, '').split('/');
+  const { full, standard, uri } = parseStandardAndUri(decodedPath);
 
-  // If we have 3 parts, there's no standard specified
-  // If we have 4 parts, standard is specified
-  let standard: Standard = 'yours';
-  let collection: string;
-  let token_id: string;
-  let full: boolean = false;
-  if (parts.length === 2) {
-    [collection, token_id] = parts;
-  } else if (parts.length === 3) {
-    [standard, collection, token_id] = parts as [Standard, string, string, string];
-  } else {
+  const parts = uri.split('/');
+  if (parts.length !== 2) {
     return new Response('Invalid parameters', {
       status: 400,
       headers: corsHeaders
     });
   }
+
+  const [collection, token_id] = parts as [string, string];
 
   console.log('standard', standard);
   console.log('collection', collection);
   console.log('token_id', token_id);
 
-  if (!collection || !token_id) {
+  if (!collection || !token_id || standard !== 'erc721') {
     return new Response('Invalid parameters', {
       status: 400,
       headers: corsHeaders
     });
   }
 
-  if (standard !== 'erc721' && standard !== 'erc1155' && standard !== 'yours') {
-    return new Response('Invalid standard', {
-      status: 400,
+  const tokenTarget = await getTokenTargetByCollectionAndERC721TokenId(collection, BigInt(token_id));
+  if (!tokenTarget) {
+    return new Response('Not Found', {
+      status: 404,
       headers: corsHeaders
     });
   }
 
-  const metadata = await getMetadata(standard, collection, token_id);
+  const metadata = await getMetadata(standard, tokenTarget.id);
   if (!metadata) {
     return new Response('Not Found', {
       status: 404,
