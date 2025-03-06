@@ -13,7 +13,7 @@ export const formatMetadata = (standard: Standard, full: boolean, metadata: Your
   return metadata;
 };
 
-export const fetchData = async (uri: string): Promise<MimeDataResponse | null> => {
+export const fetchData = async (uri: string, stream = false): Promise<MimeDataResponse | null> => {
   if (uri.startsWith('http')) {
     const response = await fetch(uri);
     const contentType = response.headers.get('Content-Type');
@@ -26,6 +26,15 @@ export const fetchData = async (uri: string): Promise<MimeDataResponse | null> =
       };
     }
 
+    if (stream) {
+      return {
+        data: response.body as ReadableStream<Uint8Array>,
+        mimeType: contentType || 'application/octet-stream',
+        type: 'stream',
+        contentLength: Number(response.headers.get('Content-Length') || 0)
+      };
+    }
+
     return {
       data: new Uint8Array(await response.arrayBuffer()),
       mimeType: contentType || 'application/octet-stream',
@@ -33,21 +42,30 @@ export const fetchData = async (uri: string): Promise<MimeDataResponse | null> =
     };
   }
 
-  const ipfsContent = await downloadIpfsFile(uri);
+  const ipfsContent = await downloadIpfsFile(uri, stream);
   if (!ipfsContent) return null;
+
+  if (ipfsContent.isStream && ipfsContent.data instanceof ReadableStream) {
+    return {
+      data: ipfsContent.data,
+      mimeType: ipfsContent.mimeType,
+      type: 'stream',
+      contentLength: ipfsContent.metadata?.size
+    };
+  }
 
   return {
     data: ipfsContent.data,
     mimeType: ipfsContent.mimeType,
-    type: 'binary'
+    type: ipfsContent.mimeType === 'application/json' ? 'json' : 'binary'
   };
 };
 
-export const getFormattedMetadata = async (standard: Standard, uri: string, full: boolean): Promise<MimeDataResponse | null> => {
+export const getFormattedMetadata = async (standard: Standard, uri: string, full: boolean, stream = false): Promise<MimeDataResponse | null> => {
   const metadata = await getMetadataByExtendingMetadata(uri);
   
   if (!metadata) {
-    return fetchData(uri);
+    return fetchData(uri, stream);
   }
 
   return {

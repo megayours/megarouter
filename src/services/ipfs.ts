@@ -23,8 +23,9 @@ const IMAGE_TYPES = new Map([
 export const discoveredImageCids = new Set<string>();
 
 export type IpfsContent = {
-  data: Uint8Array | object;
+  data: Uint8Array | object | ReadableStream<Uint8Array>;
   mimeType: string;
+  isStream?: boolean;
   metadata?: {
     cid: string;
     size: number;
@@ -65,28 +66,38 @@ function isImagePath(path: string): boolean {
   return IMAGE_TYPES.has(ext);
 }
 
-export async function downloadIpfsFile(uri: string): Promise<IpfsContent> {
+/**
+ * Creates a ReadableStream from IPFS content
+ * This allows streaming large files without loading them entirely into memory
+ */
+function streamIpfsContent(cid: string, path: string): ReadableStream<Uint8Array> {
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of ipfs.cat(`/ipfs/${cid}${path ? `/${path}` : ''}`)) {
+          controller.enqueue(chunk);
+        }
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      }
+    }
+  });
+}
+
+export async function downloadIpfsFile(uri: string, stream = false): Promise<IpfsContent> {
   try {
-    logger.info('Starting IPFS download', { uri });
+    logger.info('Starting IPFS download', { uri, stream });
 
     // Remove ipfs:// prefix if present and split into CID and path
     const cleanUri = uri.replace('ipfs://', '');
     const [cid, ...pathParts] = cleanUri.split('/');
     const path = pathParts.join('/');
 
-    // Get file stats and content
+    // Get file stats
     const stats = await ipfs.files.stat(`/ipfs/${cid}${path ? `/${path}` : ''}`);
-    const content = await getIpfsContent(cid, path);
-
-    ipfsRequestsTotal.inc({ status: 'success' });
-    logger.info('IPFS download complete', { 
-      uri,
-      cid: stats.cid.toString(),
-      size: stats.size,
-      type: stats.type
-    });
-
-    // Handle directories
+    
+    // Handle directories - directories can't be streamed
     if (stats.type === 'directory') {
       const files = [];
       for await (const file of ipfs.ls(`/ipfs/${cid}${path ? `/${path}` : ''}`)) {
@@ -112,6 +123,57 @@ export async function downloadIpfsFile(uri: string): Promise<IpfsContent> {
         }
       };
     }
+
+    // For streaming binary content (like images or large files)
+    if (stream) {
+      ipfsRequestsTotal.inc({ status: 'success' });
+      logger.info('IPFS streaming started', { 
+        uri,
+        cid: stats.cid.toString(),
+        size: stats.size,
+        type: stats.type
+      });
+
+      // If it's an image path, return as binary stream with appropriate mime type
+      if (isImagePath(cid + (path ? '/' + path : ''))) {
+        const ext = getFileExtension(cid + (path ? '/' + path : ''));
+        return {
+          data: streamIpfsContent(cid, path),
+          isStream: true,
+          mimeType: IMAGE_TYPES.get(ext) || 'application/octet-stream',
+          metadata: {
+            cid: stats.cid.toString(),
+            size: stats.size,
+            type: stats.type,
+            path: path || '/'
+          }
+        };
+      }
+
+      // For other binary content, stream it
+      return {
+        data: streamIpfsContent(cid, path),
+        isStream: true,
+        mimeType: 'application/octet-stream',
+        metadata: {
+          cid: stats.cid.toString(),
+          size: stats.size,
+          type: stats.type,
+          path: path || '/'
+        }
+      };
+    }
+
+    // Non-streaming path - get full content
+    const content = await getIpfsContent(cid, path);
+
+    ipfsRequestsTotal.inc({ status: 'success' });
+    logger.info('IPFS download complete', { 
+      uri,
+      cid: stats.cid.toString(),
+      size: stats.size,
+      type: stats.type
+    });
 
     // If it's an image path, return as binary with appropriate mime type
     if (isImagePath(cid + (path ? '/' + path : ''))) {

@@ -4,6 +4,7 @@ import { YoursMetadataStandard } from '../types/token-info';
 import { getTokenTargetByCollectionAndERC721TokenId } from '../services/blockchain';
 import { parseStandardAndUri, createJsonResponse, createErrorResponse } from '../util/response';
 import { getFormattedMetadata } from '../services/metadata';
+import { DEFAULT_HEADERS } from '../util/headers';
 
 type Standard = 'erc721' | 'erc1155' | 'yours' | 'not_specified';
 
@@ -38,58 +39,77 @@ const formatMetadata = (standard: Standard, full: boolean, metadata: YoursMetada
   return metadata;
 }
 
-export const handleERC721TokenMetadataRoute = async (path: string, corsHeaders: Record<string, string>) => {
+export const handleERC721TokenMetadataRoute = async (path: string) => {
   const decodedPath = decodeURIComponent(path).replace('/erc721/', 'erc721/');
   const { full, standard, uri } = parseStandardAndUri(decodedPath);
 
   const parts = uri.split('/');
   if (parts.length !== 2) {
-    return createErrorResponse('Invalid parameters', 400, corsHeaders);
+    return createErrorResponse('Invalid parameters', 400);
   }
 
   const [collection, token_id] = parts;
   if (!collection || !token_id || standard !== 'erc721') {
-    return createErrorResponse('Invalid parameters', 400, corsHeaders);
+    return createErrorResponse('Invalid parameters', 400);
   }
 
   const tokenTarget = await getTokenTargetByCollectionAndERC721TokenId(collection, BigInt(token_id));
   if (!tokenTarget) {
-    return createErrorResponse('Not Found', 404, corsHeaders);
+    return createErrorResponse('Not Found', 404);
   }
 
   const metadata = await getMetadata(tokenTarget.id);
   if (!metadata) {
-    return createErrorResponse('Not Found', 404, corsHeaders);
+    return createErrorResponse('Not Found', 404);
   }
 
   const formattedMetadata = formatMetadata(standard, full, metadata);
-  return createJsonResponse(formattedMetadata, corsHeaders);
+  return createJsonResponse(formattedMetadata);
 };
 
-export const handleExtendingMetadataRoute = async (path: string, corsHeaders: Record<string, string>) => {
+export const handleExtendingMetadataRoute = async (path: string) => {
   const preparedUri = path.replace('/ext/', '');
   const decodedUri = decodeURIComponent(preparedUri);
   const { standard, uri, full } = parseStandardAndUri(decodedUri);
 
-  const metadataResponse = await getFormattedMetadata(standard, uri, full);
+  const metadataResponse = await getFormattedMetadata(standard, uri, full, true);
   if (!metadataResponse) {
-    return createErrorResponse('Not Found', 404, corsHeaders);
+    return createErrorResponse('Not Found', 404);
   }
 
   if (metadataResponse.mimeType === 'application/json') {
-    return createJsonResponse(metadataResponse.data, corsHeaders);
+    return createJsonResponse(metadataResponse.data);
+  }
+
+  // Handle streaming response
+  if (metadataResponse.type === 'stream' && metadataResponse.data instanceof ReadableStream) {
+    const headers: Record<string, string> = {
+      ...DEFAULT_HEADERS,
+      'Content-Type': metadataResponse.mimeType || 'application/octet-stream',
+      'Cache-Control': CACHE_CONTROL,
+      'Transfer-Encoding': 'chunked'
+    };
+    
+    // Add content length if available
+    if (metadataResponse.contentLength) {
+      headers['Content-Length'] = metadataResponse.contentLength.toString();
+    }
+    
+    return new Response(metadataResponse.data, { headers });
   }
 
   if (!(metadataResponse.data instanceof Uint8Array)) {
-    return createErrorResponse('Invalid binary data', 500, corsHeaders);
+    return createErrorResponse('Invalid binary data', 500);
   }
 
   return new Response(metadataResponse.data, {
     headers: {
-      ...corsHeaders,
+      ...DEFAULT_HEADERS,
       'Content-Type': metadataResponse.mimeType || 'application/octet-stream',
       'Content-Length': metadataResponse.data.length.toString(),
-      'Cache-Control': 'public, max-age=31536000'
+      'Cache-Control': CACHE_CONTROL
     }
   });
 };
+
+const CACHE_CONTROL = 'public, max-age=31536000';

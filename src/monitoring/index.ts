@@ -55,10 +55,10 @@ export const logger = winston.createLogger({
     service: 'megarouter',
     environment 
   },
-  transports: [
+  transports: process.env.LOKI_URL ? [
     new winston.transports.Console(),
     new LokiTransport({
-      host: process.env.LOKI_URL || 'http://loki:3100',
+      host: process.env.LOKI_URL,
       labels: { 
         job: 'megarouter',
         environment 
@@ -68,5 +68,7 @@ export const logger = winston.createLogger({
       replaceTimestamp: true,
       onConnectionError: (err) => console.error(err)
     })
-  ]
+  ] : [
+    new winston.transports.Console()
+  ],
 }); 

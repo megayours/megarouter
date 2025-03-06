@@ -8,11 +8,17 @@ export type ParsedUri = {
   uri: string;
 };
 
-export type DataType = 'metadata' | 'binary' | 'json';
+export type DataType = 'metadata' | 'binary' | 'json' | 'stream';
 
 export type MimeDataResponse = {
   type: DataType;
-  data: DataType extends 'metadata' ? YoursMetadataStandard : DataType extends 'binary' ? Uint8Array : unknown;
+  data: DataType extends 'metadata' 
+    ? YoursMetadataStandard 
+    : DataType extends 'binary' 
+      ? Uint8Array 
+      : DataType extends 'stream'
+        ? ReadableStream<Uint8Array>
+        : unknown;
   mimeType: string;
   contentLength?: number;
 }

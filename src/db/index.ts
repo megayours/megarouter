@@ -1,5 +1,6 @@
 import { SQL } from 'bun';
 import { config } from '../config';
+import { logger } from '../monitoring';
 
 // Define token index schema
 export const tokenIndex = {
@@ -24,7 +25,7 @@ export async function setupDatabase() {
     );
   `;
 
-  console.log('✅ Database setup complete');
+  logger.info('Database setup complete');
 }
 
 // Helper functions for database operations

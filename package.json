@@ -5,6 +5,7 @@
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun --watch run src/index.ts",
+    "prepare:local": "docker compose up -d ipfs postgres",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },

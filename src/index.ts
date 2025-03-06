@@ -1,6 +1,7 @@
 import { setupDatabase } from './db';
 import { handleERC721TokenMetadataRoute, handleExtendingMetadataRoute } from './routes';
 import { register, logger, httpRequestsTotal, httpRequestDuration } from './monitoring';
+import { DEFAULT_HEADERS } from './util/headers';
 
 // Initialize database
 await setupDatabase();
@@ -37,7 +38,7 @@ const server = Bun.serve({
       // Handle CORS preflight
       if (req.method === 'OPTIONS') {
         return new Response(null, {
-          headers: corsHeaders
+          headers: DEFAULT_HEADERS
         });
       }
 
@@ -51,11 +52,11 @@ const server = Bun.serve({
       }
       // Handle metadata route
       else if (path.startsWith('/erc721/')) {
-        response = await handleERC721TokenMetadataRoute(path, corsHeaders);
+        response = await handleERC721TokenMetadataRoute(path);
       }
-      // Handle    route
+      // Handle extending metadata route
       else if (path.startsWith('/ext/')) {
-        response = await handleExtendingMetadataRoute(path, corsHeaders);
+        response = await handleExtendingMetadataRoute(path);
       }
       else {
         response = new Response('Not Found', {
@@ -97,4 +98,4 @@ const server = Bun.serve({
 });
 
 // Start the server
-logger.info(`🚀 Server is running at ${server.hostname}:${server.port}`);
+logger.info(`Server is running at ${server.hostname}:${server.port}`);
