@@ -1,7 +1,7 @@
 import { getMetadata } from './metadata';
 import { formatToERC1155, formatToERC721 } from '../util/metadata';
 import { YoursMetadataStandard } from '../types/token-info';
-import { getTokenTargetByCollectionAndERC721TokenId } from '../services/blockchain';
+import { getMetadataFromSolanaMegadata, getTokenTargetByCollectionAndERC721TokenId } from '../services/blockchain';
 import { parseStandardAndUri, createJsonResponse, createErrorResponse } from '../util/response';
 import { getFormattedMetadata } from '../services/metadata';
 import { DEFAULT_HEADERS } from '../util/headers';
@@ -111,5 +111,17 @@ export const handleExtendingMetadataRoute = async (path: string) => {
     }
   });
 };
+
+export const handleSolanaTokenMetadataRoute = async (path: string) => {
+  const address = path.replace('/solana/', '');
+
+  const metadata = await getMetadataFromSolanaMegadata(address);
+  if (!metadata) {
+    return createErrorResponse('Not Found', 404);
+  }
+
+  const formattedMetadata = formatMetadata("erc721", true, metadata);
+  return createJsonResponse(formattedMetadata);
+}
 
 const CACHE_CONTROL = 'public, max-age=31536000';

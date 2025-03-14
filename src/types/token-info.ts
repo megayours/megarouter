@@ -1,6 +1,8 @@
+import { DictPair } from "postchain-client";
+
 export type YoursMetadataStandard = {
   name: string;
-  properties: Record<string, unknown>;
+  properties: DictPair;
   yours: {
     issuing_chain: Buffer;
     decimals: number;

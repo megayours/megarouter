@@ -1,5 +1,5 @@
 import { setupDatabase } from './db';
-import { handleERC721TokenMetadataRoute, handleExtendingMetadataRoute } from './routes';
+import { handleERC721TokenMetadataRoute, handleExtendingMetadataRoute, handleSolanaTokenMetadataRoute } from './routes';
 import { register, logger, httpRequestsTotal, httpRequestDuration } from './monitoring';
 import { DEFAULT_HEADERS } from './util/headers';
 
@@ -34,6 +34,8 @@ const server = Bun.serve({
     const url = new URL(req.url);
     const path = url.pathname;
 
+    console.log(path);
+
     try {
       // Handle CORS preflight
       if (req.method === 'OPTIONS') {
@@ -57,6 +59,9 @@ const server = Bun.serve({
       // Handle extending metadata route
       else if (path.startsWith('/ext/')) {
         response = await handleExtendingMetadataRoute(path);
+      }
+      else if (path.startsWith('/solana/')) {
+        response = await handleSolanaTokenMetadataRoute(path);
       }
       else {
         response = new Response('Not Found', {

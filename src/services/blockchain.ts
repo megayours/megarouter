@@ -1,7 +1,8 @@
 import { createClient, IClient, RawGtv } from 'postchain-client';
 import { config } from '../config';
-import { TokenTarget } from '../types/token-info';
+import { TokenTarget, YoursMetadataStandard } from '../types/token-info';
 import { logger } from '../monitoring';
+import { TokenMetadata } from '@megayours/sdk';
 
 const clients: Map<string, IClient> = new Map();
 
@@ -108,3 +109,11 @@ export const getRecentTargetChain = async (blockchainRid: Buffer, id: Buffer): P
   if (!history || history.data.length === 0) return null;
   return history.data[0].blockchain_rid;
 };
+
+export const getMetadataFromSolanaMegadata = async (address: string) => {
+  return await executeClientQuery<YoursMetadataStandard>(
+    config.blockchain.megadataBlockchainRidBuffer,
+    'solana.get_metadata',
+    { address }
+  );
+}
