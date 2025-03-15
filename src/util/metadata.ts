@@ -45,19 +45,17 @@ export function formatToERC721(metadata: YoursMetadataStandard, full: boolean): 
         value: attribute.value,
       });
     }
-
-    metadata.properties.erc721 = undefined;
   }
 
-  for (const module of supportedModules) {
-    if (properties[module]) {
-      const moduleProperties = properties[module];
-      for (const [key, value] of Object.entries(moduleProperties)) {
-        result.attributes.push({
-          trait_type: `${module}.${key}`,
-          value: value,
-        });
-      }
+  delete properties["erc721"];
+
+  for (const module of Object.keys(properties)) {
+    const moduleProperties = properties[module] as Record<string, unknown>;
+    for (const [key, value] of Object.entries(moduleProperties)) {
+      result.attributes.push({
+        trait_type: `${module}.${key}`,
+        value: value,
+      });
     }
   }
 
