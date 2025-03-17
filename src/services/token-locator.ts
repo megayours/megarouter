@@ -21,7 +21,8 @@ export const locateMetadata = async (recentChainRid: Buffer, id: Buffer): Promis
         });
         logger.info('Token located', {
           id: id.toString('hex'),
-          blockchain: chainRidToSearch.toString('hex')
+          blockchain: chainRidToSearch.toString('hex'),
+          metadata
         });
         return { metadata, location: chainRidToSearch };
       }
