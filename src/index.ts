@@ -36,6 +36,7 @@ const server = Bun.serve({
 
     console.log(path);
 
+    let apiForMetric = '<unknown>';
     try {
       // Handle CORS preflight
       if (req.method === 'OPTIONS') {
@@ -54,13 +55,16 @@ const server = Bun.serve({
       }
       // Handle metadata route
       else if (path.startsWith('/erc721/')) {
+        apiForMetric = 'erc721';
         response = await handleERC721TokenMetadataRoute(path);
       }
       // Handle extending metadata route
       else if (path.startsWith('/ext/')) {
+        apiForMetric = 'ext';
         response = await handleExtendingMetadataRoute(path);
       }
       else if (path.startsWith('/solana/')) {
+        apiForMetric = 'solana';
         response = await handleSolanaTokenMetadataRoute(path);
       }
       else {
@@ -72,8 +76,8 @@ const server = Bun.serve({
 
       // Record metrics
       const duration = (Date.now() - startTime) / 1000;
-      httpRequestsTotal.inc({ method: req.method, path, status: response.status });
-      httpRequestDuration.observe({ method: req.method, path, status: response.status }, duration);
+      httpRequestsTotal.inc({ api: apiForMetric, status: response.status });
+      httpRequestDuration.observe({ api: apiForMetric, status: response.status }, duration);
 
       // Log request
       logger.info('HTTP Request', {
@@ -96,7 +100,7 @@ const server = Bun.serve({
         headers: corsHeaders
       });
 
-      httpRequestsTotal.inc({ method: req.method, path, status: 500 });
+      httpRequestsTotal.inc({ api: apiForMetric, status: 500 });
       return response;
     }
   }
