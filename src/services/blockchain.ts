@@ -2,7 +2,6 @@ import { createClient, IClient, RawGtv } from 'postchain-client';
 import { config } from '../config';
 import { TokenTarget, YoursMetadataStandard } from '../types/token-info';
 import { logger } from '../monitoring';
-import { TokenMetadata } from '@megayours/sdk';
 
 const clients: Map<string, IClient> = new Map();
 
@@ -64,7 +63,7 @@ export const getMetadata = async (blockchainRid: Buffer, id: Buffer) => {
     'yours.active_metadata',
     {
       id,
-      issuing_chain: config.blockchain.gammaChainBlockchainRidBuffer,
+      issuing_chain: config.blockchain.abstractionChainBlockchainRidBuffer,
     }
   );
 };
@@ -72,7 +71,7 @@ export const getMetadata = async (blockchainRid: Buffer, id: Buffer) => {
 export const getTokenTargetByExtendingMetadata = async (uri: string) => {
   logger.info(`Getting token target by extending metadata`, { uri });
   return await executeClientQuery<TokenTarget>(
-    config.blockchain.gammaChainBlockchainRidBuffer,
+    config.blockchain.abstractionChainBlockchainRidBuffer,
     'oracle.get_token_target_by_extending_metadata_uri',
     {
       uri
@@ -82,7 +81,7 @@ export const getTokenTargetByExtendingMetadata = async (uri: string) => {
 
 export const getTokenTargetByCollectionAndERC721TokenId = async (collection: string, tokenId: bigint) => {
   return await executeClientQuery<TokenTarget>(
-    config.blockchain.gammaChainBlockchainRidBuffer,
+    config.blockchain.abstractionChainBlockchainRidBuffer,
     'oracle.get_token_target_by_erc721_collection',
     {
       collection,
@@ -98,7 +97,7 @@ export const getRecentTargetChain = async (blockchainRid: Buffer, id: Buffer): P
     {
       account_id: null,
       id,
-      issuing_chain: config.blockchain.gammaChainBlockchainRidBuffer,
+      issuing_chain: config.blockchain.abstractionChainBlockchainRidBuffer,
       from_height: null,
       page_cursor: null,
       type: 'sent',
@@ -112,8 +111,17 @@ export const getRecentTargetChain = async (blockchainRid: Buffer, id: Buffer): P
 
 export const getMetadataFromSolanaMegadata = async (address: string) => {
   return await executeClientQuery<YoursMetadataStandard>(
-    config.blockchain.megadataBlockchainRidBuffer,
+    config.blockchain.abstractionChainBlockchainRidBuffer,
     'solana.get_metadata',
     { address }
+  );
+}
+
+export const getMetadataFromMegadata = async (collection: string, tokenId: string) => {
+  logger.info(`Getting metadata from megadata`, { collection, tokenId });
+  return await executeClientQuery<YoursMetadataStandard>(
+    config.blockchain.abstractionChainBlockchainRidBuffer,
+    'megadata.get_metadata',
+    { collection: Buffer.from(collection, 'hex'), token_id: tokenId }
   );
 }

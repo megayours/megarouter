@@ -1,10 +1,11 @@
 import { getMetadata } from './metadata';
 import { formatToERC1155, formatToERC721 } from '../util/metadata';
 import { YoursMetadataStandard } from '../types/token-info';
-import { getMetadataFromSolanaMegadata, getTokenTargetByCollectionAndERC721TokenId } from '../services/blockchain';
+import { getMetadataFromMegadata, getMetadataFromSolanaMegadata, getTokenTargetByCollectionAndERC721TokenId } from '../services/blockchain';
 import { parseStandardAndUri, createJsonResponse, createErrorResponse } from '../util/response';
 import { getFormattedMetadata } from '../services/metadata';
 import { DEFAULT_HEADERS } from '../util/headers';
+import { logger } from '../monitoring';
 
 type Standard = 'erc721' | 'erc1155' | 'yours' | 'not_specified';
 
@@ -116,6 +117,24 @@ export const handleSolanaTokenMetadataRoute = async (path: string) => {
   const address = path.replace('/solana/', '');
 
   const metadata = await getMetadataFromSolanaMegadata(address);
+  if (!metadata) {
+    return createErrorResponse('Not Found', 404);
+  }
+
+  const formattedMetadata = formatMetadata("erc721", true, metadata);
+  return createJsonResponse(formattedMetadata);
+}
+
+export const handleMegadataRoute = async (path: string) => {
+  const parts = path.replace('/megadata/', '').split('/');
+  if (parts.length !== 2) {
+    return createErrorResponse('Invalid parameters', 400);
+  }
+
+  const [collection, token_id] = parts;
+
+  const metadata = await getMetadataFromMegadata(collection, token_id);
+  logger.info(`Metadata: ${JSON.stringify(metadata)}`);
   if (!metadata) {
     return createErrorResponse('Not Found', 404);
   }

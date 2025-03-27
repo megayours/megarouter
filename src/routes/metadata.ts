@@ -8,7 +8,7 @@ export async function getMetadata(id: Buffer) {
   const indexedToken = await findTokenLocation(id);
   const startingChain = indexedToken
     ? indexedToken.blockchain_rid
-    : config.blockchain.gammaChainBlockchainRidBuffer;
+    : config.blockchain.abstractionChainBlockchainRidBuffer;
 
   try {
     const tokenInfo = await locateMetadata(startingChain, id);

@@ -1,5 +1,5 @@
 import { setupDatabase } from './db';
-import { handleERC721TokenMetadataRoute, handleExtendingMetadataRoute, handleSolanaTokenMetadataRoute } from './routes';
+import { handleERC721TokenMetadataRoute, handleExtendingMetadataRoute, handleMegadataRoute, handleSolanaTokenMetadataRoute } from './routes';
 import { register, logger, httpRequestsTotal, httpRequestDuration } from './monitoring';
 import { DEFAULT_HEADERS } from './util/headers';
 
@@ -62,6 +62,10 @@ const server = Bun.serve({
       else if (path.startsWith('/ext/')) {
         apiForMetric = 'ext';
         response = await handleExtendingMetadataRoute(path);
+      }
+      else if (path.startsWith('/megadata/')) {
+        apiForMetric = 'megadata';
+        response = await handleMegadataRoute(path);
       }
       else if (path.startsWith('/solana/')) {
         apiForMetric = 'solana';

@@ -38,12 +38,15 @@ export function formatToERC721(metadata: YoursMetadataStandard, full: boolean): 
     if (erc721.background_color) result.background_color = String(erc721.background_color);
     if (erc721.animation_url) result.animation_url = String(erc721.animation_url);
     if (erc721.youtube_url) result.youtube_url = String(erc721.youtube_url);
+    if (erc721.name) result.name = String(erc721.name);
 
-    for (const attribute of erc721.attributes) {
-      result.attributes.push({
-        trait_type: attribute.trait_type,
-        value: attribute.value,
-      });
+    if (erc721.attributes) {
+      for (const attribute of erc721.attributes) {
+        result.attributes.push({
+          trait_type: attribute.trait_type,
+          value: attribute.value,
+        });
+      }
     }
   }
 
