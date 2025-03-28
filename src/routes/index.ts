@@ -1,7 +1,7 @@
 import { getMetadata } from './metadata';
 import { formatToERC1155, formatToERC721 } from '../util/metadata';
 import { YoursMetadataStandard } from '../types/token-info';
-import { getMetadataFromMegadata, getMetadataFromSolanaMegadata, getTokenTargetByCollectionAndERC721TokenId } from '../services/blockchain';
+import { getMetadataFromMegadata, getMetadataFromSolanaMegadata } from '../services/blockchain';
 import { parseStandardAndUri, createJsonResponse, createErrorResponse } from '../util/response';
 import { getFormattedMetadata } from '../services/metadata';
 import { DEFAULT_HEADERS } from '../util/headers';
@@ -39,34 +39,6 @@ const formatMetadata = (standard: Standard, full: boolean, metadata: YoursMetada
 
   return metadata;
 }
-
-export const handleERC721TokenMetadataRoute = async (path: string) => {
-  const decodedPath = decodeURIComponent(path).replace('/erc721/', 'erc721/');
-  const { full, standard, uri } = parseStandardAndUri(decodedPath);
-
-  const parts = uri.split('/');
-  if (parts.length !== 2) {
-    return createErrorResponse('Invalid parameters', 400);
-  }
-
-  const [collection, token_id] = parts;
-  if (!collection || !token_id || standard !== 'erc721') {
-    return createErrorResponse('Invalid parameters', 400);
-  }
-
-  const tokenTarget = await getTokenTargetByCollectionAndERC721TokenId(collection, BigInt(token_id));
-  if (!tokenTarget) {
-    return createErrorResponse('Not Found', 404);
-  }
-
-  const metadata = await getMetadata(tokenTarget.id);
-  if (!metadata) {
-    return createErrorResponse('Not Found', 404);
-  }
-
-  const formattedMetadata = formatMetadata(standard, full, metadata);
-  return createJsonResponse(formattedMetadata);
-};
 
 export const handleExtendingMetadataRoute = async (path: string) => {
   const preparedUri = path.replace('/ext/', '');

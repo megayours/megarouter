@@ -1,5 +1,5 @@
 import { setupDatabase } from './db';
-import { handleERC721TokenMetadataRoute, handleExtendingMetadataRoute, handleMegadataRoute, handleSolanaTokenMetadataRoute } from './routes';
+import { handleExtendingMetadataRoute, handleMegadataRoute, handleSolanaTokenMetadataRoute } from './routes';
 import { register, logger, httpRequestsTotal, httpRequestDuration } from './monitoring';
 import { DEFAULT_HEADERS } from './util/headers';
 
@@ -52,11 +52,6 @@ const server = Bun.serve({
         response = new Response('Mega Router API', {
           headers: corsHeaders
         });
-      }
-      // Handle metadata route
-      else if (path.startsWith('/erc721/')) {
-        apiForMetric = 'erc721';
-        response = await handleERC721TokenMetadataRoute(path);
       }
       // Handle extending metadata route
       else if (path.startsWith('/ext/')) {

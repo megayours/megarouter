@@ -72,20 +72,9 @@ export const getTokenTargetByExtendingMetadata = async (uri: string) => {
   logger.info(`Getting token target by extending metadata`, { uri });
   return await executeClientQuery<TokenTarget>(
     config.blockchain.abstractionChainBlockchainRidBuffer,
-    'oracle.get_token_target_by_extending_metadata_uri',
+    'ipfs.get_token_target',
     {
       uri
-    }
-  );
-}
-
-export const getTokenTargetByCollectionAndERC721TokenId = async (collection: string, tokenId: bigint) => {
-  return await executeClientQuery<TokenTarget>(
-    config.blockchain.abstractionChainBlockchainRidBuffer,
-    'oracle.get_token_target_by_erc721_collection',
-    {
-      collection,
-      token_id: tokenId,
     }
   );
 }
