@@ -7,6 +7,7 @@ import { DEFAULT_HEADERS } from '../util/headers';
 import { logger } from '../monitoring';
 import { Filehub } from 'filehub';
 import { config } from '../config';
+import { createClient } from 'postchain-client';
 
 type Standard = 'erc721' | 'erc1155' | 'yours' | 'not_specified';
 
@@ -63,12 +64,12 @@ export const handleExtendingMetadataRoute = async (path: string) => {
       'Cache-Control': CACHE_CONTROL,
       'Transfer-Encoding': 'chunked'
     };
-    
+
     // Add content length if available
     if (metadataResponse.contentLength) {
       headers['Content-Length'] = metadataResponse.contentLength.toString();
     }
-    
+
     return new Response(metadataResponse.data, { headers });
   }
 
@@ -124,12 +125,16 @@ export const handleMegahubRoute = async (path: string) => {
 
   const [hash] = parts;
 
-  const filehub = new Filehub({
+  const client = await createClient({
     directoryNodeUrlPool: config.blockchain.directoryNodeUrlPool,
-    blockchainRid: config.blockchain.megahubBlockchainRid,
-  })
+    blockchainRid: config.blockchain.abstractionChainBlockchainRid,
+  });
 
-  const file = await filehub.getFile(Buffer.from(hash, 'hex'));
+  const file = await client.query<{ data: Buffer, content_type: string }>(
+    'filestorage.get_file',
+    { hash: Buffer.from(hash, 'hex') }
+  );
+
   if (!file) {
     return createErrorResponse('Not Found', 404);
   }
@@ -137,12 +142,11 @@ export const handleMegahubRoute = async (path: string) => {
   return new Response(file.data, {
     headers: {
       ...DEFAULT_HEADERS,
-      'Content-Type': file.getMetadata()['Content-Type'] || 'application/octet-stream',
+      'Content-Type': file.content_type || 'application/octet-stream',
       'Content-Length': file.data.length.toString(),
       'Cache-Control': CACHE_CONTROL
     }
   });
 }
-
 
 const CACHE_CONTROL = 'public, max-age=31536000';
