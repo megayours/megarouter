@@ -1,4 +1,3 @@
-import { getMetadata } from './metadata';
 import { formatToERC1155, formatToERC721 } from '../util/metadata';
 import { YoursMetadataStandard } from '../types/token-info';
 import { getMetadataFromMegadata, getMetadataFromSolanaMegadata } from '../services/blockchain';
@@ -6,6 +5,8 @@ import { parseStandardAndUri, createJsonResponse, createErrorResponse } from '..
 import { getFormattedMetadata } from '../services/metadata';
 import { DEFAULT_HEADERS } from '../util/headers';
 import { logger } from '../monitoring';
+import { Filehub } from 'filehub';
+import { config } from '../config';
 
 type Standard = 'erc721' | 'erc1155' | 'yours' | 'not_specified';
 
@@ -114,5 +115,34 @@ export const handleMegadataRoute = async (path: string) => {
   const formattedMetadata = formatMetadata("erc721", true, metadata);
   return createJsonResponse(formattedMetadata);
 }
+
+export const handleMegahubRoute = async (path: string) => {
+  const parts = path.replace('/megahub/', '').split('/');
+  if (parts.length !== 1) {
+    return createErrorResponse('Invalid parameters', 400);
+  }
+
+  const [hash] = parts;
+
+  const filehub = new Filehub({
+    directoryNodeUrlPool: config.blockchain.directoryNodeUrlPool,
+    blockchainRid: config.blockchain.megahubBlockchainRid,
+  })
+
+  const file = await filehub.getFile(Buffer.from(hash, 'hex'));
+  if (!file) {
+    return createErrorResponse('Not Found', 404);
+  }
+
+  return new Response(file.data, {
+    headers: {
+      ...DEFAULT_HEADERS,
+      'Content-Type': file.getMetadata()['Content-Type'] || 'application/octet-stream',
+      'Content-Length': file.data.length.toString(),
+      'Cache-Control': CACHE_CONTROL
+    }
+  });
+}
+
 
 const CACHE_CONTROL = 'public, max-age=31536000';

@@ -9,6 +9,8 @@ export const config = {
     abstractionChainBlockchainRidBuffer: Buffer.from(process.env.ABSTRACTION_CHAIN_BLOCKCHAIN_RID || '', 'hex'),
     megadataBlockchainRid: process.env.MEGADATA_BLOCKCHAIN_RID || '',
     megadataBlockchainRidBuffer: Buffer.from(process.env.MEGADATA_BLOCKCHAIN_RID || '', 'hex'),
+    megahubBlockchainRid: process.env.MEGADATA_BLOCKCHAIN_RID || '',
+    megahubBlockchainRidBuffer: Buffer.from(process.env.MEGADATA_BLOCKCHAIN_RID || '', 'hex'),
   },
   ipfs: {
     url: process.env.IPFS_URL || 'http://localhost:5001',
