@@ -1,5 +1,5 @@
 import { setupDatabase } from './db';
-import { handleExtendingMetadataRoute, handleMegadataRoute, handleSolanaTokenMetadataRoute } from './routes';
+import { handleExtendingMetadataRoute, handleMegadataRoute, handleMegahubRoute, handleSolanaTokenMetadataRoute } from './routes';
 import { register, logger, httpRequestsTotal, httpRequestDuration } from './monitoring';
 import { DEFAULT_HEADERS } from './util/headers';
 
@@ -65,6 +65,10 @@ const server = Bun.serve({
       else if (path.startsWith('/solana/')) {
         apiForMetric = 'solana';
         response = await handleSolanaTokenMetadataRoute(path);
+      }
+      else if (path.startsWith('/megahub/')) {
+        apiForMetric = 'megahub';
+        response = await handleMegahubRoute(path);
       }
       else {
         response = new Response('Not Found', {
