@@ -111,6 +111,6 @@ export const getMetadataFromMegadata = async (collection: string, tokenId: strin
   return await executeClientQuery<YoursMetadataStandard>(
     config.blockchain.abstractionChainBlockchainRidBuffer,
     'megadata.get_metadata',
-    { collection: Buffer.from(collection, 'hex'), token_id: tokenId }
+    { collection: collection, token_id: tokenId }
   );
 }
