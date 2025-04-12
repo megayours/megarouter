@@ -72,7 +72,7 @@ export const getTokenTargetByExtendingMetadata = async (uri: string) => {
   logger.info(`Getting token target by extending metadata`, { uri });
   return await executeClientQuery<TokenTarget>(
     config.blockchain.abstractionChainBlockchainRidBuffer,
-    'ipfs.get_token_target',
+    'extending_collection.get_token_target',
     {
       uri
     }
