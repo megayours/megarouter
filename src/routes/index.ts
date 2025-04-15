@@ -130,7 +130,7 @@ export const handleMegahubRoute = async (path: string) => {
     blockchainRid: config.blockchain.abstractionChainBlockchainRid,
   });
 
-  const file = await client.query<{ data: Buffer, content_type: string }>(
+  const file = await client.query<{ data: Buffer, content_type: string, name: string }>(
     'filestorage.get_file',
     { hash: Buffer.from(hash, 'hex') }
   );
@@ -144,7 +144,10 @@ export const handleMegahubRoute = async (path: string) => {
       ...DEFAULT_HEADERS,
       'Content-Type': file.content_type || 'application/octet-stream',
       'Content-Length': file.data.length.toString(),
-      'Cache-Control': CACHE_CONTROL
+      'Cache-Control': CACHE_CONTROL,
+      ...(file.content_type === 'application/octet-stream' && file.name
+        ? { 'Content-Disposition': `attachment; filename="${file.name}"` }
+        : {})
     }
   });
 }
