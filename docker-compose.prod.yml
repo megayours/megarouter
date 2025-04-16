@@ -16,6 +16,8 @@ services:
   ipfs:
     image: ipfs/kubo:latest
     ports:
+      - "4001:4001"
+      - "4001:4001/udp"
       - "5001:5001"
     volumes:
       - ipfs_data:/data/ipfs

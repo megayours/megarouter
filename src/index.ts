@@ -29,6 +29,7 @@ Bun.serve({
 // Create and start the main server
 const server = Bun.serve({
   port: process.env.PORT ? parseInt(process.env.PORT) : 3000,
+  idleTimeout: 255,
   async fetch(req) {
     const startTime = Date.now();
     const url = new URL(req.url);

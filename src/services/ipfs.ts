@@ -1,10 +1,17 @@
 import { create } from 'ipfs-http-client';
 import { config } from '../config';
 import { ipfsRequestsTotal, logger } from '../monitoring';
+import { Buffer } from 'buffer';
 
 const ipfs = create({
   url: config.ipfs.url,
+  timeout: 10000,
 })
+
+const ipfsFallback = create({
+  url: 'https://ipfs.io/api/v0',
+  timeout: 255 * 1000,
+});
 
 logger.info('IPFS API Created', { apiUrl: config.ipfs.url })
 
@@ -85,22 +92,46 @@ function streamIpfsContent(cid: string, path: string): ReadableStream<Uint8Array
   });
 }
 
-export async function downloadIpfsFile(uri: string, stream = false): Promise<IpfsContent> {
-  try {
-    logger.info('Starting IPFS download', { uri, stream });
+async function getIpfsContentWithClient(client: ReturnType<typeof create>, cid: string, path: string): Promise<Uint8Array> {
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of client.cat(`/ipfs/${cid}${path ? `/${path}` : ''}`)) {
+    chunks.push(chunk);
+  }
+  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result;
+}
 
-    // Remove ipfs:// prefix if present and split into CID and path
+function streamIpfsContentWithClient(client: ReturnType<typeof create>, cid: string, path: string): ReadableStream<Uint8Array> {
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of client.cat(`/ipfs/${cid}${path ? `/${path}` : ''}`)) {
+          controller.enqueue(chunk);
+        }
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      }
+    }
+  });
+}
+
+export async function downloadIpfsFile(uri: string, stream = false): Promise<IpfsContent> {
+  async function tryDownload(client: ReturnType<typeof create>): Promise<IpfsContent> {
     const cleanUri = uri.replace('ipfs://', '');
     const [cid, ...pathParts] = cleanUri.split('/');
     const path = pathParts.join('/');
-
-    // Get file stats
-    const stats = await ipfs.files.stat(`/ipfs/${cid}${path ? `/${path}` : ''}`);
-    
-    // Handle directories - directories can't be streamed
+    const stats = await client.files.stat(`/ipfs/${cid}${path ? `/${path}` : ''}`);
+    logger.info('IPFS stats', { stats });
     if (stats.type === 'directory') {
       const files = [];
-      for await (const file of ipfs.ls(`/ipfs/${cid}${path ? `/${path}` : ''}`)) {
+      for await (const file of client.ls(`/ipfs/${cid}${path ? `/${path}` : ''}`)) {
         files.push({
           name: file.name,
           type: file.type,
@@ -123,8 +154,6 @@ export async function downloadIpfsFile(uri: string, stream = false): Promise<Ipf
         }
       };
     }
-
-    // For streaming binary content (like images or large files)
     if (stream) {
       ipfsRequestsTotal.inc({ status: 'success' });
       logger.info('IPFS streaming started', { 
@@ -133,12 +162,10 @@ export async function downloadIpfsFile(uri: string, stream = false): Promise<Ipf
         size: stats.size,
         type: stats.type
       });
-
-      // If it's an image path, return as binary stream with appropriate mime type
       if (isImagePath(cid + (path ? '/' + path : ''))) {
         const ext = getFileExtension(cid + (path ? '/' + path : ''));
         return {
-          data: streamIpfsContent(cid, path),
+          data: streamIpfsContentWithClient(client, cid, path),
           isStream: true,
           mimeType: IMAGE_TYPES.get(ext) || 'application/octet-stream',
           metadata: {
@@ -149,10 +176,8 @@ export async function downloadIpfsFile(uri: string, stream = false): Promise<Ipf
           }
         };
       }
-
-      // For other binary content, stream it
       return {
-        data: streamIpfsContent(cid, path),
+        data: streamIpfsContentWithClient(client, cid, path),
         isStream: true,
         mimeType: 'application/octet-stream',
         metadata: {
@@ -163,10 +188,7 @@ export async function downloadIpfsFile(uri: string, stream = false): Promise<Ipf
         }
       };
     }
-
-    // Non-streaming path - get full content
-    const content = await getIpfsContent(cid, path);
-
+    const content = await getIpfsContentWithClient(client, cid, path);
     ipfsRequestsTotal.inc({ status: 'success' });
     logger.info('IPFS download complete', { 
       uri,
@@ -174,8 +196,6 @@ export async function downloadIpfsFile(uri: string, stream = false): Promise<Ipf
       size: stats.size,
       type: stats.type
     });
-
-    // If it's an image path, return as binary with appropriate mime type
     if (isImagePath(cid + (path ? '/' + path : ''))) {
       const ext = getFileExtension(cid + (path ? '/' + path : ''));
       return {
@@ -189,15 +209,10 @@ export async function downloadIpfsFile(uri: string, stream = false): Promise<Ipf
         }
       };
     }
-
-    // Try to parse as JSON
     try {
       const contentStr = new TextDecoder().decode(content);
       const jsonContent = JSON.parse(contentStr);
-
-      // If it's NFT metadata (has attributes and image fields)
       if (jsonContent.attributes && jsonContent.image) {
-        // Track image CID if it's an IPFS URL
         if (jsonContent.image.startsWith('ipfs://')) {
           const imageCid = extractCidFromIpfsUrl(jsonContent.image);
           if (imageCid) {
@@ -210,7 +225,6 @@ export async function downloadIpfsFile(uri: string, stream = false): Promise<Ipf
           }
         }
       }
-
       return {
         data: jsonContent,
         mimeType: 'application/json',
@@ -222,7 +236,6 @@ export async function downloadIpfsFile(uri: string, stream = false): Promise<Ipf
         }
       };
     } catch (parseError) {
-      // If not valid JSON, return as binary
       return {
         data: content,
         mimeType: 'application/octet-stream',
@@ -234,12 +247,64 @@ export async function downloadIpfsFile(uri: string, stream = false): Promise<Ipf
         }
       };
     }
+  }
+
+  async function tryGatewayFallback(): Promise<IpfsContent> {
+    const cleanUri = uri.replace('ipfs://', '');
+    const [cid, ...pathParts] = cleanUri.split('/');
+    const path = pathParts.join('/');
+    const gatewayUrl = `https://ipfs.io/ipfs/${cid}${path ? `/${path}` : ''}`;
+    logger.info('Trying IPFS gateway fallback', { gatewayUrl });
+    const res = await fetch(gatewayUrl);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch from gateway: ${res.status} ${res.statusText}`);
+    }
+    const contentType = res.headers.get('content-type') || '';
+    const ext = getFileExtension(cid + (path ? '/' + path : ''));
+    let mimeType = IMAGE_TYPES.get(ext) || contentType || 'application/octet-stream';
+    let data: Uint8Array | object;
+    if (mimeType.startsWith('application/json')) {
+      const json = await res.json();
+      if (json && typeof json === 'object') {
+        data = json;
+      } else {
+        // fallback to bytes if not a valid object
+        data = new Uint8Array(await res.arrayBuffer());
+        mimeType = 'application/octet-stream';
+      }
+    } else {
+      data = new Uint8Array(await res.arrayBuffer());
+    }
+    return {
+      data,
+      mimeType,
+      metadata: {
+        cid,
+        size: (data instanceof Uint8Array) ? data.length : JSON.stringify(data).length,
+        type: 'file',
+        path: path || '/'
+      }
+    };
+  }
+
+  try {
+    logger.info('Starting IPFS download', { uri, stream });
+    return await tryDownload(ipfs);
   } catch (error) {
     ipfsRequestsTotal.inc({ status: 'error' });
-    logger.error('Failed to download IPFS file', {
+    logger.error('Failed to download IPFS file from primary IPFS server, retrying with ipfs.io gateway', {
       uri,
       error: error instanceof Error ? error.message : String(error)
     });
-    throw error;
+    try {
+      return await tryGatewayFallback();
+    } catch (fallbackError) {
+      ipfsRequestsTotal.inc({ status: 'error' });
+      logger.error('Failed to download IPFS file from ipfs.io gateway', {
+        uri,
+        error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+      });
+      throw fallbackError;
+    }
   }
 }
