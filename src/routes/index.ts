@@ -46,7 +46,7 @@ export const handleExtendingMetadataRoute = async (path: string) => {
   const decodedUri = decodeURIComponent(preparedUri);
   const { standard, uri, full } = parseStandardAndUri(decodedUri);
 
-  const metadataResponse = await getFormattedMetadata(standard, uri, full, true);
+  const metadataResponse = await getFormattedMetadata(standard, uri, full, false);
   if (!metadataResponse) {
     return createErrorResponse('Not Found', 404);
   }
