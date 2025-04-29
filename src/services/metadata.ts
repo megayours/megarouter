@@ -16,6 +16,11 @@ export const formatMetadata = (standard: Standard, full: boolean, metadata: Your
 export const fetchData = async (uri: string, stream = false): Promise<MimeDataResponse | null> => {
   if (uri.startsWith('http')) {
     const response = await fetch(uri);
+
+    if (response.status === 404) {
+      return null;
+    }
+
     const contentType = response.headers.get('Content-Type');
 
     if (contentType === 'application/json') {

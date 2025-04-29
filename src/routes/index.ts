@@ -5,7 +5,6 @@ import { parseStandardAndUri, createJsonResponse, createErrorResponse } from '..
 import { getFormattedMetadata } from '../services/metadata';
 import { DEFAULT_HEADERS } from '../util/headers';
 import { logger } from '../monitoring';
-import { Filehub } from 'filehub';
 import { config } from '../config';
 import { createClient } from 'postchain-client';
 
